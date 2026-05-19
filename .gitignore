@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment (commit .env.example; ignore secrets)
+.env
+.env.local
+.env.*.local
+
+# SQLite (local dev DB; WAL mode creates -shm / -wal)
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+server/data/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test coverage (if added later)
+coverage/

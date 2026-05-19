@@ -1,0 +1,21 @@
+{
+  "name": "swipe-vote",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "seed": "npm run seed -w server",
+    "add-item": "npm run add-item -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
