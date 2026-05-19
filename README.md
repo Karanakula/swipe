@@ -1,135 +1,217 @@
 # Landmark Swipe — Swipe-to-Vote (Mobile Web)
 
-Mobile-first web app: swipe through **110 landmark-inspired picks** (placeholder photos) and vote **yes/no**. Votes are stored in **SQLite** via a small **Express** API so aggregates reflect **all users**. Optimized layout for a **390×844** viewport; mouse drag works on desktop for grading.
+A mobile-first swipe voting app: users rate **110 hypothetical landmark trips** (yes/no). Votes persist in **SQLite** on the server so **Results** reflect aggregates across all sessions. The UI targets a **390×844** viewport; mouse drag works on desktop for demos and grading.
 
-## Theme
+**Voting theme:** *“Would you book a trip here tomorrow?”* — each card shows a label, short description, and placeholder photo ([Lorem Picsum](https://picsum.photos/)).
 
-**“Hypothetical landmark trips”** — each card is a stylized destination cue (mix of ruin / skyline / park / island / mountain templates in the copy). You are deciding **whether you would book a trip there tomorrow** — a lightweight, judgment-based theme suitable for rapid swiping.
+---
 
-## Quick start
+## Repository layout
 
-**Requirements**
+| Path | Role |
+|------|------|
+| `client/` | React 18 + Vite + TypeScript UI (gestures, tabs, WebSocket client) |
+| `server/` | Express API, `node:sqlite` persistence, seed/admin scripts |
+| `package.json` | npm workspaces root (`npm run dev` runs both apps) |
+| `AI_NOTES.md` | Required AI collaboration write-up (Section 6) |
 
-- **Node.js ≥ 22.12** (for [`node:sqlite`](https://nodejs.org/api/sqlite.html) — built-in module, no native SQLite compile).
-- Network access for **Lorem Picsum** images (`picsum.photos`).
+---
 
-**Install**
+## How to install and run
+
+### Prerequisites
+
+- **Node.js ≥ 22.12** — uses the built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html) module (no native SQLite compile step).
+- **Network access** for card images (`picsum.photos`).
+
+### Steps (fresh clone)
 
 ```bash
+# 1. Install dependencies (root + workspaces)
 npm install
-```
 
-**Seed the database (110 items)**
-
-```bash
+# 2. Create the database and seed 110 items
 npm run seed
-```
 
-**Run API + UI together**
-
-```bash
+# 3. Start API + client together
 npm run dev
 ```
 
-- API: `http://localhost:3333`  
-- Client (Vite): `http://localhost:5173` (set `VITE_API_URL` if you change the port — see `.env.example`)
+| Service | URL |
+|---------|-----|
+| API | http://localhost:3333 |
+| Web UI (Vite) | http://localhost:5173 |
 
-If you see **`EADDRINUSE` on port 3333**, something else is already listening (often a stray `tsx watch`). Stop it or run the API on another port (`PORT=3340 npm run dev -w server`) and put `VITE_API_URL=http://localhost:3340` in `client/.env.local`.
+Open the UI in a mobile-sized window or device emulator for the intended layout.
 
-**Build for production assets**
+### Optional configuration
 
-```bash
-npm run build
-```
-
-Then start only the API (open the Vite preview separately, or point static hosting at `client/dist`):
+Copy `client/.env.example` to `client/.env.local` if the API is not on port 3333:
 
 ```bash
-npm run start -w server
+# client/.env.local
+VITE_API_URL=http://localhost:3333
 ```
 
-## Architecture (short)
+Override the database file path when seeding or running the API:
 
-- **Client** (`client/`): React + Vite + TypeScript — **Outfit / Plus Jakarta Sans typography**, **≤390 px capped shell**, **CLS-safe heroes** (`aspect-ratio: 480/640`, intrinsic `width`/`height`). **`@use-gesture/react`** + **`@react-spring/web`**: swipe tilt + **green/red tints**, **threshold rail/shuttle**, **pull-down cyan curtain** cue for Results; **buttons fire the same fly-out** animation as gestures. Tabs: Swipe · Results · Matches. Pull-down release **or** Results tab navigates aggregates. Undo + session UUID caching as before.
-- **Server** (`server/`): Express JSON API, **`node:sqlite`** file DB under `server/data/swipe.sqlite`. **WebSocket** (`/ws`) broadcasts `results_updated` after each vote so open clients can refresh aggregates (stretch: real-time; polling would also meet the brief).
+```bash
+SWIPE_DB_PATH=/path/to/custom.sqlite npm run seed
+```
 
-## Vote de-duplication (required)
+### Production build
 
-For each `(session_id, item_id)` pair there is **at most one row** in `votes` (primary key).  
-`POST /vote` uses **`INSERT … ON CONFLICT DO UPDATE`** so repeat submissions **replace** the previous choice instead of incrementing counts twice. Documented behavior: **latest vote wins** per session per item.
+```bash
+npm run build          # client → client/dist, server → server/dist
+npm run start -w server   # API only (serve client/dist via any static host, or use Vite preview)
+```
 
-## Persistence choice (SQLite via `node:sqlite`)
+### Troubleshooting
 
-- **Pros**: Single file, zero extra services, **no native addon build** (relevant when `better-sqlite3` fails on some Node/toolchain combos), easy to reset for graders (`rm server/data/swipe.sqlite && npm run seed`).
-- **Cons**: Node marks the module **experimental** (may emit a startup warning); not a fit for huge write concurrency (fine for this exercise).
+| Issue | Fix |
+|-------|-----|
+| **`EADDRINUSE` on port 3333** | Stop the stray process, or run `PORT=3340 npm run dev -w server` and set `VITE_API_URL=http://localhost:3340` in `client/.env.local`. |
+| **Empty deck / no items** | Run `npm run seed` (creates `server/data/swipe.sqlite`). |
+| **Broken images** | Requires internet; images are remote Picsum URLs, not bundled assets. |
+| **Reset all votes** | `rm -f server/data/swipe.sqlite*` then `npm run seed`. |
 
-## API (as specified)
+### Admin scripts
 
-| Method | Path | Notes |
-|--------|------|--------|
-| `GET` | `/items` | All votable items |
-| `POST` | `/vote` | Body: `{ itemId, choice: "yes"\|"no", sessionId }` — optional `decisionMs` for analytics |
-| `GET` | `/results` | Per-item yes/no aggregates |
+```bash
+npm run seed                    # 110 themed items
+npm run add-item -- --id my-id --label "Label" --image "https://..." --desc "optional"
+```
 
-Additional endpoints used by the app: `GET /my-votes`, `POST /vote/undo`, `GET /matches`, `GET /analytics`, `GET /health`, `WebSocket /ws`.
+---
 
-## Admin / seed scripts
+## Architecture
 
-- **Seed 110 items**: `npm run seed` (implemented in `server/seed.ts`).
-- **Add one item without code changes**:  
-  `npm run add-item -- --id my-id --label "Label" --image "https://..." --desc "optional"`  
-  (`SWIPE_DB_PATH` overrides DB location.)
+```mermaid
+flowchart LR
+  subgraph Client["client/ (Vite + React)"]
+    UI[SwipeDeck · Results · Matches]
+    WS[WebSocket client]
+    LS[(localStorage session UUID)]
+  end
+  subgraph Server["server/ (Express)"]
+    API[REST JSON API]
+    WSS[WebSocket /ws]
+    DB[(SQLite swipe.sqlite)]
+  end
+  UI -->|fetch / vote| API
+  WS --> WSS
+  LS -.->|sessionId on requests| API
+  API --> DB
+  WSS -->|results_updated| WS
+```
 
-## Media credits
+**Client (`client/`)**
 
-- Photos are **deterministic Lorem Picsum** URLs (`https://picsum.photos/seed/...`) — placeholder stock-style imagery suitable for a classroom demo.  
-  Source: [Lorem Picsum](https://picsum.photos/).
+- **Swipe tab:** `@use-gesture/react` + `@react-spring/web` for drag, tilt, green/red overlays, threshold rail, and fly-out on commit; Yes/No buttons use the same animation path.
+- **Results tab:** global aggregates from `GET /results`; sort modes and text filter; optional pull-down gesture from Swipe navigates here.
+- **Matches tab:** items the user voted **yes** on where global yes-rate ≥ adjustable threshold (`GET /matches`).
+- **Session:** anonymous UUID in `localStorage`; `GET /my-votes` restores progress after reload.
+- **Live updates:** WebSocket subscribes to `results_updated` and refetches aggregates (shows a “Live” indicator when connected).
 
-## Requirements checklist
+**Server (`server/`)**
+
+- **Express** JSON API with CORS enabled for local dev.
+- **SQLite** file at `server/data/swipe.sqlite` (WAL mode). Schema: `items`, `votes`, `sessions_meta`.
+- **Vote idempotency:** composite primary key `(session_id, item_id)` with `INSERT … ON CONFLICT DO UPDATE` — **latest vote wins** per session per item.
+- **WebSocket** broadcasts after each vote or undo so connected clients refresh Results without polling.
+
+**Persistence choice:** SQLite via `node:sqlite` keeps deployment simple (single file, no Docker DB). Trade-off: the API is still marked **experimental** in Node; fine for this workload, not aimed at high write concurrency.
+
+---
+
+## Completed requirements
 
 ### Core (Section 3.1)
 
-| Requirement | Status |
-|-------------|--------|
-| Documented voting theme | Yes (`README`, UI) |
-| ≥100 distinct items with image + label + description | Yes (110 seeded) |
-| Swipe right = yes, left = no; Yes/No buttons | Yes |
-| Visual feedback: tilt, color hints, threshold cue, smooth next card | Yes |
-| Results view: pull-down **or** tab; global aggregates per item | Yes |
-| Sort/filter on results | Yes (sort + text filter) |
-| Backend persistence (not `localStorage` as source of truth) | Yes |
-| End-of-deck state | Yes |
-| Required endpoints `/items`, `/vote`, `/results` | Yes |
-| Idempotent per user/item | Yes (see above) |
-| Input validation on server | Yes |
-| README: run, architecture, trade-offs | This file |
+| # | Requirement | Status | Notes |
+|---|-------------|--------|-------|
+| 1 | Documented voting theme | ✅ | See [Voting theme](#landmark-swipe--swipe-to-vote-mobile-web) and in-app copy |
+| 2 | ≥100 items (image + label + description) | ✅ | **110** rows from `server/seed.ts` |
+| 3 | Swipe right = yes, left = no; Yes/No buttons | ✅ | `SwipeCard.tsx` |
+| 4 | Visual feedback (tilt, color, threshold, smooth next card) | ✅ | Spring animations + threshold shuttle |
+| 5 | Results: pull-down **or** tab; global aggregates | ✅ | `ResultsPanel.tsx` + pull-down on Swipe |
+| 6 | Sort/filter on results | ✅ | Sort: most-loved, most-no, most-divisive, most-skipped; text filter |
+| 7 | Backend persistence (not `localStorage` as source of truth) | ✅ | SQLite; `localStorage` only stores `sessionId` |
+| 8 | End-of-deck state | ✅ | Shown when all items voted in session |
+| 9 | `GET /items`, `POST /vote`, `GET /results` | ✅ | See [API](#api-reference) |
+| 10 | Idempotent vote per user/item | ✅ | PK + upsert; documented below |
+| 11 | Server-side input validation | ✅ | `server/src/validation.ts` |
+| 12 | README: install, architecture, requirements, issues | ✅ | This file |
 
-### Stretch (Section 3.2) — **all implemented**
+**Vote de-duplication (required behavior):** For each `(session_id, item_id)` there is at most one row in `votes`. Re-posting replaces the previous choice instead of double-counting.
 
-| # | Feature | How |
-|---|---------|-----|
-| 7 | Session identity | UUID in `localStorage`; votes survive reload via `GET /my-votes` |
-| 8 | Undo | `POST /vote/undo` + UI button |
-| 9 | Matches view | `GET /matches` + slider threshold |
-| 10 | Real-time aggregates | WebSocket broadcast + client refetch |
-| 11 | Admin seed script | `seed.ts` + `scripts/add-item.ts` |
-| 12 | Basic analytics | `GET /analytics` + footer strip |
+### Stretch (Section 3.2)
 
-## Known issues / limits
+| # | Feature | Status | Implementation |
+|---|---------|--------|----------------|
+| 7 | Session identity | ✅ | UUID in `localStorage`; `GET /my-votes` |
+| 8 | Undo | ✅ | `POST /vote/undo` + UI stack |
+| 9 | Matches view | ✅ | `GET /matches` + threshold slider |
+| 10 | Real-time aggregates | ✅ | WebSocket `results_updated` on `/ws` |
+| 11 | Admin seed script | ✅ | `npm run seed`, `npm run add-item` |
+| 12 | Basic analytics | ✅ | `GET /analytics` + footer strip |
 
-- **Node** may print an **ExperimentalWarning** for `node:sqlite` — expected until the API is fully stable.
-- **Images** load from the network; offline runs show broken images unless you swap URLs to local assets.
-- **No authentication** — session id is client-controlled (acceptable for the stated anonymous model; documented trade-off).
-- **Undo** applies to the **last action in the current browser session** (stack resets on full page reload; server votes remain).
-- **Concurrent writes**: WAL mode helps; this assignment workload is light; heavy parallel load was not a goal.
+**All listed stretch goals are implemented.**
 
-## AI usage reflection
+---
 
-See **`AI_NOTES.md`** (required brief — personalize before submit).
+## API reference
 
-## Suggested demo checklist (2–3 min)
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/items` | All votable items |
+| `POST` | `/vote` | Body: `{ itemId, choice: "yes"\|"no", sessionId }` — optional `decisionMs` |
+| `GET` | `/results` | Per-item yes/no counts (all users) |
+| `GET` | `/my-votes?sessionId=` | Current session’s votes (resume after reload) |
+| `POST` | `/vote/undo` | Body: `{ sessionId, itemId }` |
+| `GET` | `/matches?sessionId=&threshold=` | User’s yes-votes where global yes-rate ≥ threshold |
+| `GET` | `/analytics` | Totals: votes, sessions, avg decision time |
+| `GET` | `/health` | Liveness check |
+| WebSocket | `/ws` | Push `results_updated` after vote/undo |
 
-1. Show swipe gestures (tilt + green/red) and **progress** `n / 110`.
-2. Vote with **buttons**; open **Results** tab — sort modes + search.
-3. Open **Matches** after a few **yes** votes; adjust threshold.
-4. Mention **session** persistence (refresh page, resume queue) and **WebSocket** “Live” pill.
+---
+
+## Known issues and limitations
+
+- **Node experimental warning** — `node:sqlite` may log `ExperimentalWarning` at startup; expected until the API is stable.
+- **No authentication** — `sessionId` is client-generated and trusted by the API (acceptable for anonymous classroom use; not suitable for adversarial production traffic).
+- **Remote images only** — cards depend on `picsum.photos`; offline or blocked networks show broken images.
+- **Undo scope** — undo stack lives in browser memory for the current page session; a full reload clears the stack (server votes remain until explicitly undone again).
+- **Undo is per-item** — only the last undone item is removed server-side per request; rapid undo requires multiple actions.
+- **Concurrent load** — WAL mode handles light parallel writes; not load-tested for heavy traffic.
+
+---
+
+## AI usage (Section 6)
+
+A separate collaboration write-up is in **[`AI_NOTES.md`](./AI_NOTES.md)** (required by the brief). It covers:
+
+1. Which parts were AI-assisted vs reviewed by hand  
+2. A concrete pushback example (`better-sqlite3` → `node:sqlite`)  
+3. What worked well vs what failed on first attempt  
+4. Other tools used (fill in before submit)
+
+**Before submitting:** personalize bracketed sections in `AI_NOTES.md` with your own voice and specifics.
+
+---
+
+## Demo guide (2–3 minutes)
+
+Suggested flow for a screen recording or live demo:
+
+1. **Swipe** — drag a card (show tilt + green/red tint + threshold rail); vote with **Yes/No** buttons; note progress `n / 110`.
+2. **Results** — open the tab; change sort mode; use search; point out aggregates update when another browser votes (optional second window).
+3. **Matches** — after a few yes votes, open Matches; adjust the threshold slider.
+4. **Session + live** — refresh the page (deck resumes); show the **Live** pill when WebSocket is connected.
+5. **Persistence** — mention SQLite on the server (`server/data/swipe.sqlite`) and `npm run seed` for a clean slate.
+
+---
+
+## Media credits
+
+Card photos use deterministic [Lorem Picsum](https://picsum.photos/) URLs (`https://picsum.photos/seed/swipe-landmark-...`). Placeholder imagery for educational demo use only.
