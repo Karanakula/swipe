@@ -189,29 +189,6 @@ flowchart LR
 
 ## AI usage (Section 6)
 
-A separate collaboration write-up is in **[`AI_NOTES.md`](./AI_NOTES.md)** (required by the brief). It covers:
+A separate collaboration write-up is in **[`AI_NOTES.md`](./AI_NOTES.md)** (required by the brief). It 
 
-1. Which parts were AI-assisted vs reviewed by hand  
-2. A concrete pushback example (`better-sqlite3` → `node:sqlite`)  
-3. What worked well vs what failed on first attempt  
-4. Other tools used (fill in before submit)
 
-**Before submitting:** personalize bracketed sections in `AI_NOTES.md` with your own voice and specifics.
-
----
-
-## Demo guide (2–3 minutes)
-
-Suggested flow for a screen recording or live demo:
-
-1. **Swipe** — drag a card (show tilt + green/red tint + threshold rail); vote with **Yes/No** buttons; note progress `n / 110`.
-2. **Results** — open the tab; change sort mode; use search; point out aggregates update when another browser votes (optional second window).
-3. **Matches** — after a few yes votes, open Matches; adjust the threshold slider.
-4. **Session + live** — refresh the page (deck resumes); show the **Live** pill when WebSocket is connected.
-5. **Persistence** — mention SQLite on the server (`server/data/swipe.sqlite`) and `npm run seed` for a clean slate.
-
----
-
-## Media credits
-
-Card photos use deterministic [Lorem Picsum](https://picsum.photos/) URLs (`https://picsum.photos/seed/swipe-landmark-...`). Placeholder imagery for educational demo use only.
