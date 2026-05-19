@@ -189,6 +189,6 @@ flowchart LR
 
 ## AI usage (Section 6)
 
-A separate collaboration write-up is in **[`AI_NOTES.md`](./AI_NOTES.md)** (required by the brief). It 
+A separate collaboration write-up is in **[`AI_NOTES.md`](./AI_NOTES.md)** (required by the brief).
 
 
